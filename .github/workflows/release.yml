@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@master
+      - name: Get version
+        run: echo "version=v$(head -n1 CHANGELOG.md | sed -En 's/# v([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+).*/\1/p')" >> "$GITHUB_OUTPUT"
+        id: version
+      - name: Merge files
+        run: |
+          files=$(grep require_relative lib/high_score.rb | sed -En "s/require_relative\s+'(\w+\.rb)'/\1/p")
+          echo "# dr-high_score $VERSION" >> high_score.rb
+          echo "# MIT Licensed" >> high_score.rb
+          echo "# Copyright (c) 2025 Marc Heiligers" >> high_score.rb
+          echo "# See https://github.com/marcheiligers/dr-high_score" >> high_score.rb
+          echo "" >> high_score.rb
+          grep -v require_relative lib/high_score.rb >> high_score.rb
+          for file in ${files}
+          do
+            cat "lib/${file}" >> high_score.rb
+            echo "" >> high_score.rb
+          done
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+      - name: Get changelog
+        run: |
+          num=$(echo $(grep -n -m 2 -w "#" CHANGELOG.md | cut -d: -f1 | tail -n1) - 2 | bc)
+          {
+            echo "changelog<<EOF"
+            head -n$num CHANGELOG.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+        id: changelog
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release
+        uses: actions/upload-release-asset@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: high_score.rb
+          asset_name: high_score.rb
+          asset_content_type: text/ruby
