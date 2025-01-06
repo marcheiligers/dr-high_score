@@ -8,7 +8,13 @@ In order to use this library, you will need to sign up for an account at [Purple
 
 Grab the latest single file release `high_score.rb` from the [Releases](https://github.com/marcheiligers/dr-high_score/releases) page and save it in your DragonRuby game folder (I'm assuming in a `lib` directory in the sample below).
 
-TODO: Add signup, add "encryption"
+Finally, you'll have to "encrypt" your API key. You can use the game console:
+
+```
+$gtk.ffi_misc.setclipboard(HighScore::BadCrypto.encrypt('YOUR_KEY_HERE'))
+```
+
+Or you can use the [sample app on Itch](https://fascinationworks.itch.io/dr-high-score?secret=h9NIxJGh6Isp10sy4s75xCAM).
 
 
 ```ruby
@@ -77,6 +83,6 @@ end
 
 ## Thanks
 
-* [Zimnox](https://zimnox.com/) (@phaelax on Discord) for providing [Purple Token](https://purpletoken.com/)
-* @leviongit (@leviondiscord on Discord) for [dragonjson](https://github.com/leviongit/dragonjson) used in the samples
+* [Zimnox](https://zimnox.com/) (@phaelax on Discord) for providing [Purple Token](https://purpletoken.com/), and working with me to figure out the various CORS incantations to make it work with DragonRuby web builds
 * @virtualnomad on Discord for pointing me at Purple Token in the first place and connecting me with @phaelax
+* @leviongit (@leviondiscord on Discord) for [dragonjson](https://github.com/leviongit/dragonjson) used in the samples
