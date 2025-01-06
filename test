@@ -1,0 +1,2 @@
+cd ..
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy ./dragonruby dr-high_score --test tests/tests.rb --no-tick

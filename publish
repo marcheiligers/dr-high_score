@@ -1,0 +1,9 @@
+rm -rf ../build
+mkdir -p ../build
+
+cp -R app ../build
+cp -R lib ../build
+cp -R metadata ../build
+
+cd ..
+./dragonruby-publish build
