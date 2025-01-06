@@ -23,18 +23,18 @@ jobs:
           echo "# Copyright (c) 2025 Marc Heiligers" >> high_score.rb
           echo "# See https://github.com/marcheiligers/dr-high_score" >> high_score.rb
           echo "" >> high_score.rb
-          echo "---- File header complete ----"
-          cat high_score.rb
-          grep -v require_relative lib/high_score.rb >> high_score.rb
-          echo "---- Main file complete ----"
-          cat high_score.rb
+          # echo "---- File header complete ----"
+          # cat high_score.rb
+          grep -v require_relative lib/high_score.rb >> high_score.rb || true
+          # echo "---- Main file complete ----"
+          # cat high_score.rb
           for file in ${files}
           do
             cat "lib/${file}" >> high_score.rb
             echo "" >> high_score.rb
           done
-          echo "---- Requires complete ----"
-          cat high_score.rb
+          # echo "---- Requires complete ----"
+          # cat high_score.rb
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
