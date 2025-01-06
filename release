@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
-rm input.rb | true
+rm high_score.rb | true
+
+VERSION=v$(head -n1 CHANGELOG.md | sed -En 's/# v([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+).*/\1/p')
+
 files=$(grep require_relative lib/high_score.rb | gsed -En "s/require_relative\s+'(\w+\.rb)'/\1/p")
-
+echo "# dr-high_score $VERSION" >> high_score.rb
+echo "# MIT Licensed" >> high_score.rb
+echo "# Copyright (c) 2025 Marc Heiligers" >> high_score.rb
+echo "# See https://github.com/marcheiligers/dr-high_score" >> high_score.rb
+echo "" >> high_score.rb
 grep -v require_relative lib/high_score.rb >> high_score.rb
-
 for file in ${files}
 do
   cat "lib/${file}" >> high_score.rb
