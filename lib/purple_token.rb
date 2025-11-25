@@ -1,3 +1,6 @@
+require 'base64'
+require 'sha2'
+
 module HighScore
   class PurpleToken
     include BadCrypto # see below
@@ -7,8 +10,9 @@ module HighScore
 
     attr_reader :scores, :position
 
-    def initialize(key, scores = [])
+    def initialize(key, secret, scores = [])
       @key = decrypt(key)
+      @secret = decrypt(secret)
 
       scores ||= []
       @scores = scores + Array.new(20 - scores.length) { { name: '---', score: 0 } }
@@ -70,6 +74,11 @@ module HighScore
     end
 
     private
+
+    def query(params = {})
+      payload = Base64.encode64(params.merge(gamekey: @key).map { |k, v| "#{k}=#{v}" }.join('&'))
+      signature = SHA2
+    end
 
     class Request
       TICKS_BETWEEN_RETRIES = 60 # 1 second * 2 ** retries
