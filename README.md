@@ -4,7 +4,7 @@ A library for saving and retrieving high scores for DragonRuby.
 
 ## Usage
 
-In order to use this library, you will need to sign up for an account at [Purple Token](https://purpletoken.com/), create a Game in the UI, and then create an API key.
+In order to use this library, you will need to sign up for an account at [Purple Token](https://purpletoken.com/), create a Game in the UI, and then create an API key. Ensure that you enable the "Legacy" mode (checkbox) once the key has been created.
 
 Grab the latest single file release `high_score.rb` from the [Releases](https://github.com/marcheiligers/dr-high_score/releases) page and save it in your DragonRuby game folder (I'm assuming in a `lib` directory in the sample below).
 
@@ -86,3 +86,5 @@ end
 * [Zimnox](https://zimnox.com/) (@phaelax on Discord) for providing [Purple Token](https://purpletoken.com/), and working with me to figure out the various CORS incantations to make it work with DragonRuby web builds
 * @virtualnomad on Discord for pointing me at Purple Token in the first place and connecting me with @phaelax
 * @leviongit (@leviondiscord on Discord) for [dragonjson](https://github.com/leviongit/dragonjson) used in the samples
+* @KonnorRogers for the [gist](https://gist.github.com/KonnorRogers/9ca86e4d055d81ee702fb79ceda5df20) to make links work in Safari again
+* @Xed on Discord for trying things and making me realize I need to add the notes about the "Legacy" keys to this file
