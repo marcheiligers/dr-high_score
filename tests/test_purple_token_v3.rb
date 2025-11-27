@@ -77,16 +77,13 @@ def test_purpletoken_v3_api_example(_args, assert)
   # Test with the exact example from v3api.txt
   # NOTE: The Base64 in the docs decodes to "gamkey" not "gamekey" - appears to be a typo in docs
   # gamkey=c5f4a0474223a4cc0c93d68a7c80cc541d05b90c&format=json&array=yes&dates=yes&ids=yes
-  # The docs use "fuzzy bunnies" as the plaintext secret
-  # BUT: BadCrypto is not reversible for strings containing chars from DEST ('n', 's' in "fuzzy bunnies")
-  # So we can't use encrypt/decrypt to get back to "fuzzy bunnies"
-  #
-  # Instead, we test that our implementation works correctly with signed requests:
-  # We'll use a simple secret that IS reversible through BadCrypto
+  # secret = "fuzzy bunnies" (now fully supported with extended BadCrypto!)
+  # expected payload = "Z2Fta2V5PWM1ZjRhMDQ3NDIyM2E0Y2MwYzkzZDY4YTdjODBjYzU0MWQwNWI5MGMmZm9ybWF0PWpzb24mYXJyYXk9eWVzJmRhdGVzPXllcyZpZHM9eWVz"
+  # expected signature = "5888134de8dff7b7afc159c99382ef9ad7bc2bc5e45930630c5267d395242fa0"
 
   key = "c5f4a0474223a4cc0c93d68a7c80cc541d05b90c"
-  # Use a secret that only contains chars from SOURCE or neither, so it's reversible
-  plain_secret = "abc123xyz"  # 'abc123' are in SOURCE, 'xyz' are in neither
+  # Use the actual "fuzzy bunnies" secret from the docs
+  plain_secret = "fuzzy bunnies"
   encrypted_secret = HighScore::BadCrypto.encrypt(plain_secret)
 
   instance = TestPurpleTokenV3.new(key, encrypted_secret)
@@ -110,12 +107,12 @@ def test_purpletoken_v3_api_example(_args, assert)
   assert.equal! payload.nil?, false
   assert.equal! sig.nil?, false
 
-  # Verify payload matches expected (same as docs example since params are the same)
+  # Verify payload matches expected from docs
   expected_payload = "Z2Fta2V5PWM1ZjRhMDQ3NDIyM2E0Y2MwYzkzZDY4YTdjODBjYzU0MWQwNWI5MGMmZm9ybWF0PWpzb24mYXJyYXk9eWVzJmRhdGVzPXllcyZpZHM9eWVz"
   assert.equal! payload, expected_payload
 
-  # Verify signature is correctly computed with our secret
-  expected_sig = HighScore::SHA256.hexdigest(payload + plain_secret)
+  # Verify signature matches expected from docs
+  expected_sig = "5888134de8dff7b7afc159c99382ef9ad7bc2bc5e45930630c5267d395242fa0"
   assert.equal! sig, expected_sig
 end
 
