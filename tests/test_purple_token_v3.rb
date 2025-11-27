@@ -1,0 +1,154 @@
+# Mock PurpleTokenV3 to access private methods for testing
+class TestPurpleTokenV3 < HighScore::PurpleTokenV3
+  def test_build_signed_request(endpoint, params)
+    build_signed_request(endpoint, params)
+  end
+end
+
+def test_purpletoken_v3_signed_request_format(_args, assert)
+  # Test that signed requests have the correct format
+  key = "test_key"
+  secret = "test_secret"
+
+  instance = TestPurpleTokenV3.new(key, secret)
+  url = instance.test_build_signed_request('get', gamekey: 'test_key', format: 'json')
+
+  # URL should start with the base URI
+  assert.equal! url.start_with?("https://purpletoken.com/update/v3/get?"), true
+
+  # URL should contain payload parameter
+  assert.equal! url.include?("payload="), true
+
+  # URL should contain sig parameter
+  assert.equal! url.include?("&sig="), true
+end
+
+def test_purpletoken_v3_payload_encoding(_args, assert)
+  # Test that the payload is correctly Base64 encoded
+  key = "test_key"
+  secret = "test_secret"
+
+  instance = TestPurpleTokenV3.new(key, secret)
+  url = instance.test_build_signed_request('get', gamekey: 'test_key', format: 'json')
+
+  # Extract payload from URL (without using Regexp)
+  params = url.split('?')[1]
+  payload_param = params.split('&').find { |p| p.start_with?('payload=') }
+  payload = payload_param.split('=', 2)[1]
+
+  assert.equal! payload.nil?, false
+
+  # Decode the payload and verify it contains the params
+  decoded = HighScore::Base64.decode(payload)
+  assert.equal! decoded.include?("gamekey=test_key"), true
+  assert.equal! decoded.include?("format=json"), true
+end
+
+def test_purpletoken_v3_signature_generation(_args, assert)
+  # Test that the signature is correctly generated
+  key = "test_key"
+  secret = "test_secret"
+
+  instance = TestPurpleTokenV3.new(key, secret)
+  url = instance.test_build_signed_request('get', gamekey: 'test_key', format: 'json')
+
+  # Extract payload and signature from URL (without using Regexp)
+  params = url.split('?')[1]
+  param_parts = params.split('&')
+
+  payload_param = param_parts.find { |p| p.start_with?('payload=') }
+  sig_param = param_parts.find { |p| p.start_with?('sig=') }
+
+  payload = payload_param.split('=', 2)[1]
+  sig = sig_param.split('=', 2)[1]
+
+  assert.equal! payload.nil?, false
+  assert.equal! sig.nil?, false
+  assert.equal! sig.length, 64  # SHA256 hex is 64 characters
+
+  # Verify the signature is SHA256(payload + decrypted_secret)
+  # BadCrypto.decrypt transforms the secret, so we need to use the decrypted value
+  decrypted_secret = HighScore::BadCrypto.decrypt(secret)
+  expected_sig = HighScore::SHA256.hexdigest(payload + decrypted_secret)
+  assert.equal! sig, expected_sig
+end
+
+def test_purpletoken_v3_api_example(_args, assert)
+  # Test with the exact example from v3api.txt
+  # NOTE: The Base64 in the docs decodes to "gamkey" not "gamekey" - appears to be a typo in docs
+  # gamkey=c5f4a0474223a4cc0c93d68a7c80cc541d05b90c&format=json&array=yes&dates=yes&ids=yes
+  # The docs use "fuzzy bunnies" as the plaintext secret
+  # BUT: BadCrypto is not reversible for strings containing chars from DEST ('n', 's' in "fuzzy bunnies")
+  # So we can't use encrypt/decrypt to get back to "fuzzy bunnies"
+  #
+  # Instead, we test that our implementation works correctly with signed requests:
+  # We'll use a simple secret that IS reversible through BadCrypto
+
+  key = "c5f4a0474223a4cc0c93d68a7c80cc541d05b90c"
+  # Use a secret that only contains chars from SOURCE or neither, so it's reversible
+  plain_secret = "abc123xyz"  # 'abc123' are in SOURCE, 'xyz' are in neither
+  encrypted_secret = HighScore::BadCrypto.encrypt(plain_secret)
+
+  instance = TestPurpleTokenV3.new(key, encrypted_secret)
+  url = instance.test_build_signed_request('get',
+                                            gamkey: 'c5f4a0474223a4cc0c93d68a7c80cc541d05b90c',
+                                            format: 'json',
+                                            array: 'yes',
+                                            dates: 'yes',
+                                            ids: 'yes')
+
+  # Extract payload and signature (without using Regexp)
+  params = url.split('?')[1]
+  param_parts = params.split('&')
+
+  payload_param = param_parts.find { |p| p.start_with?('payload=') }
+  sig_param = param_parts.find { |p| p.start_with?('sig=') }
+
+  payload = payload_param.split('=', 2)[1]
+  sig = sig_param.split('=', 2)[1]
+
+  assert.equal! payload.nil?, false
+  assert.equal! sig.nil?, false
+
+  # Verify payload matches expected (same as docs example since params are the same)
+  expected_payload = "Z2Fta2V5PWM1ZjRhMDQ3NDIyM2E0Y2MwYzkzZDY4YTdjODBjYzU0MWQwNWI5MGMmZm9ybWF0PWpzb24mYXJyYXk9eWVzJmRhdGVzPXllcyZpZHM9eWVz"
+  assert.equal! payload, expected_payload
+
+  # Verify signature is correctly computed with our secret
+  expected_sig = HighScore::SHA256.hexdigest(payload + plain_secret)
+  assert.equal! sig, expected_sig
+end
+
+def test_purpletoken_v3_endpoints(_args, assert)
+  # Test that different endpoints are correctly used
+  key = "test_key"
+  secret = "test_secret"
+
+  instance = TestPurpleTokenV3.new(key, secret)
+
+  url_get = instance.test_build_signed_request('get', gamekey: 'test_key')
+  url_submit = instance.test_build_signed_request('submit', gamekey: 'test_key', player: 'test', score: 100)
+  url_delete = instance.test_build_signed_request('delete', gamekey: 'test_key', score_id: 123)
+
+  assert.equal! url_get.include?("/v3/get?"), true
+  assert.equal! url_submit.include?("/v3/submit?"), true
+  assert.equal! url_delete.include?("/v3/delete?"), true
+end
+
+def test_purpletoken_v3_signature_hex_length(_args, assert)
+  # Verify signature is always 64 hex characters (SHA-256)
+  key = "test_key"
+  secret = "test_secret"
+
+  instance = TestPurpleTokenV3.new(key, secret)
+  url = instance.test_build_signed_request('get', gamekey: 'test_key')
+
+  # Extract signature (without using Regexp)
+  params = url.split('?')[1]
+  sig_param = params.split('&').find { |p| p.start_with?('sig=') }
+  sig = sig_param.split('=', 2)[1]
+
+  assert.equal! sig.nil?, false
+  assert.equal! sig.length, 64
+  assert.equal! sig, sig.downcase # Should be lowercase
+end

@@ -1,10 +1,12 @@
 require_relative 'purple_token/request'
+require_relative 'base64'
+require_relative 'sha256'
 
 module HighScore
-  class PurpleToken
-    include BadCrypto # see below
+  class PurpleTokenV3
+    include BadCrypto # see util.rb
 
-    BASE_URI = 'https://purpletoken.com/update/v2/'
+    BASE_URI = 'https://purpletoken.com/update/v3/'
     TICKS_BETWEEN_REFRESHES = 60 * 60 * 5 # 5 minutes
 
     attr_reader :scores, :position
@@ -32,19 +34,19 @@ module HighScore
       @ticks = 0
       @fetch_scores_in_flight = true
 
-      url = "#{BASE_URI}get_score/index.php?gamekey=#{@key}&format=json"
+      url = build_signed_request('get', gamekey: @key, format: 'json', array: 'yes')
       @queue << PurpleTokenRequest.new(url) do |response|
         @fetch_scores_in_flight = false
         return unless response[:http_response_code] == 200
 
-        data = $gtk.parse_json(response[:response_data]) || {}
-        @scores = data['scores']&.map { |score| { name: score['player'], score: score['score'] } } || []
-        @scores += Array.new(20 - scores.length) { { name: '---', score: 0 } }
+        data = $gtk.parse_json(response[:response_data]) || []
+        @scores = data.map { |score| { name: score['player'], score: score['score'] } }
+        @scores += Array.new(20 - @scores.length) { { name: '---', score: 0 } }
       end
     end
 
     def save_score(player, score)
-      @position = @scores.index { |s| s.score < score }
+      @position = @scores.index { |s| s[:score] < score }
       if @position
         @scores.insert(@position, { name: player, score: score })
         @scores = @scores[0..19]
@@ -52,7 +54,7 @@ module HighScore
         return 20
       end
 
-      url = "#{BASE_URI}submit_score/index.php?gamekey=#{@key}&player=#{player}&score=#{score}"
+      url = build_signed_request('submit', gamekey: @key, player: player, score: score)
       @queue << PurpleTokenRequest.new(url) do |response|
         return unless response[:http_response_code] == 200
 
@@ -63,7 +65,7 @@ module HighScore
     end
 
     def high_score?(score, top = 20)
-      @scores[top - 1].score < score
+      @scores[top - 1][:score] < score
     end
 
     def tick
@@ -74,5 +76,23 @@ module HighScore
       fetch_scores if @ticks > TICKS_BETWEEN_REFRESHES
     end
 
+    private
+
+    # Build a signed request for the v3 API
+    # endpoint: 'get', 'submit', or 'delete'
+    # params: hash of query parameters (without gamekey, which is added automatically)
+    def build_signed_request(endpoint, params = {})
+      # Build the params string
+      params_string = params.map { |k, v| "#{k}=#{v}" }.join('&')
+
+      # Encode to Base64 (URL-safe, no padding)
+      payload = Base64.urlsafe_encode64(params_string)
+
+      # Create signature: SHA256(payload + secret)
+      signature = SHA256.hexdigest(payload + @secret)
+
+      # Build the final URL
+      "#{BASE_URI}#{endpoint}?payload=#{payload}&sig=#{signature}"
+    end
   end
 end

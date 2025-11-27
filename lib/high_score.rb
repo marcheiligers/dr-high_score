@@ -1,2 +1,6 @@
 require_relative 'util.rb'
+require_relative 'base64.rb'
+require_relative 'sha256.rb'
+require_relative 'purple_token/request.rb'
 require_relative 'purple_token.rb'
+require_relative 'purple_token_v3.rb'
