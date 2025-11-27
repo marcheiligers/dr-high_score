@@ -1,121 +1,66 @@
-module HighScore
-  module Base64
-    # Standard Base64 alphabet
-    ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-    PAD = "="
+# Cribbed from https://github.com/ruby/base64/blob/master/lib/base64.rb
+#
+# Copyright (C) 1993-2013 Yukihiro Matsumoto. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+# OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+# SUCH DAMAGE.
+#
+# Removed docstrings to reduce bloat for web builds
 
-    # Encode a string to Base64
-    def self.encode(str)
-      return "" if str.nil? || str.empty?
+module Base64
+  # The version of this module.
+  VERSION = "0.3.0"
 
-      result = []
-      bytes = str.bytes
+  module_function
 
-      # Process 3 bytes at a time
-      i = 0
-      while i < bytes.length
-        # Get up to 3 bytes
-        b1 = bytes[i] || 0
-        b2 = bytes[i + 1]
-        b3 = bytes[i + 2]
+  def encode64(bin)
+    [bin].pack("m")
+  end
 
-        # Convert 3 bytes (24 bits) into 4 base64 characters (6 bits each)
-        # First character: top 6 bits of b1
-        result << ALPHABET[b1 >> 2]
+  def decode64(str)
+    str.unpack1("m")
+  end
 
-        if b2.nil?
-          # Only 1 byte: bottom 2 bits of b1, padded with 4 zeros
-          result << ALPHABET[(b1 & 0x03) << 4]
-          result << PAD
-          result << PAD
-        elsif b3.nil?
-          # 2 bytes: bottom 2 bits of b1 + top 4 bits of b2
-          result << ALPHABET[((b1 & 0x03) << 4) | (b2 >> 4)]
-          # Bottom 4 bits of b2, padded with 2 zeros
-          result << ALPHABET[(b2 & 0x0F) << 2]
-          result << PAD
-        else
-          # 3 bytes: bottom 2 bits of b1 + top 4 bits of b2
-          result << ALPHABET[((b1 & 0x03) << 4) | (b2 >> 4)]
-          # Bottom 4 bits of b2 + top 2 bits of b3
-          result << ALPHABET[((b2 & 0x0F) << 2) | (b3 >> 6)]
-          # Bottom 6 bits of b3
-          result << ALPHABET[b3 & 0x3F]
-        end
+  def strict_encode64(bin)
+    [bin].pack("m0")
+  end
 
-        i += 3
-      end
+  def strict_decode64(str)
+    str.unpack1("m0")
+  end
 
-      result.join
+  def urlsafe_encode64(bin, padding: true)
+    str = strict_encode64(bin)
+    str.chomp!("==") or str.chomp!("=") unless padding
+    str.tr!("+/", "-_")
+    str
+  end
+
+  def urlsafe_decode64(str)
+    if !str.end_with?("=") && str.length % 4 != 0
+      str = str.ljust((str.length + 3) & ~3, "=")
+      str.tr!("-_", "+/")
+    else
+      str = str.tr("-_", "+/")
     end
-
-    # Encode without line breaks (same as encode for URL usage)
-    def self.strict_encode64(str)
-      encode(str)
-    end
-
-    # Encode without line breaks or padding (for URL-safe usage)
-    def self.urlsafe_encode64(str)
-      result = encode(str)
-      # Remove trailing padding for URL-safe usage
-      while result.end_with?('=')
-        result = result[0..-2]
-      end
-      result
-    end
-
-    # Decode a Base64 string
-    def self.decode(str)
-      return "" if str.nil? || str.empty?
-
-      # Remove leading/trailing whitespace
-      str = str.strip
-
-      # Build reverse lookup table
-      reverse = {}
-      idx = 0
-      ALPHABET.each_char do |c|
-        reverse[c] = idx
-        idx += 1
-      end
-
-      result = []
-      bytes = str.chars
-
-      # Process 4 characters at a time
-      i = 0
-      while i < bytes.length
-        # Get up to 4 characters
-        c1 = bytes[i]
-        c2 = bytes[i + 1]
-        c3 = bytes[i + 2]
-        c4 = bytes[i + 3]
-
-        break if c1.nil? || c2.nil?
-
-        # Skip padding
-        v1 = reverse[c1] || 0
-        v2 = reverse[c2] || 0
-        v3 = c3 && c3 != PAD ? (reverse[c3] || 0) : nil
-        v4 = c4 && c4 != PAD ? (reverse[c4] || 0) : nil
-
-        # First byte: top 6 bits from v1 + top 2 bits from v2
-        result.push(((v1 << 2) | (v2 >> 4)) & 0xFF)
-
-        if v3
-          # Second byte: bottom 4 bits from v2 + top 4 bits from v3
-          result.push(((v2 << 4) | (v3 >> 2)) & 0xFF)
-
-          if v4
-            # Third byte: bottom 2 bits from v3 + all 6 bits from v4
-            result.push(((v3 << 6) | v4) & 0xFF)
-          end
-        end
-
-        i += 4
-      end
-
-      result.pack('C*')
-    end
+    strict_decode64(str)
   end
 end

@@ -1,5 +1,3 @@
-require_relative 'purple_token/request'
-
 module HighScore
   class PurpleToken
     include BadCrypto # see below
@@ -9,9 +7,8 @@ module HighScore
 
     attr_reader :scores, :position
 
-    def initialize(key, secret, scores = [])
+    def initialize(key, scores = [])
       @key = decrypt(key)
-      @secret = decrypt(secret)
 
       scores ||= []
       @scores = scores + Array.new(20 - scores.length) { { name: '---', score: 0 } }
@@ -33,7 +30,7 @@ module HighScore
       @fetch_scores_in_flight = true
 
       url = "#{BASE_URI}get_score/index.php?gamekey=#{@key}&format=json"
-      @queue << PurpleTokenRequest.new(url) do |response|
+      @queue << Request.new(url) do |response|
         @fetch_scores_in_flight = false
         return unless response[:http_response_code] == 200
 
@@ -53,7 +50,7 @@ module HighScore
       end
 
       url = "#{BASE_URI}submit_score/index.php?gamekey=#{@key}&player=#{player}&score=#{score}"
-      @queue << PurpleTokenRequest.new(url) do |response|
+      @queue << Request.new(url) do |response|
         return unless response[:http_response_code] == 200
 
         fetch_scores
@@ -73,6 +70,5 @@ module HighScore
       @ticks += 1
       fetch_scores if @ticks > TICKS_BETWEEN_REFRESHES
     end
-
   end
 end

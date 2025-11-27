@@ -1,12 +1,8 @@
-require_relative 'purple_token/request'
-require_relative 'base64'
-require_relative 'sha256'
-
 module HighScore
   class PurpleTokenV3
     include BadCrypto # see util.rb
 
-    BASE_URI = 'https://purpletoken.com/update/v3/'
+    BASE_URI = 'https://purpletoken.com/update/v3/'.freeze
     TICKS_BETWEEN_REFRESHES = 60 * 60 * 5 # 5 minutes
 
     attr_reader :scores, :position
@@ -21,9 +17,8 @@ module HighScore
       @ticks = 0
       @fetch_scores_in_flight = false
 
-      puts "The PurpleToken high score API is provided for free by the kind person at Zimnox (https://www.zimnox.com/). " \
-           "Please don't abuse this kindness. The gamekey is the key for this game. You could use this to post any score " \
-           "you like, but where's the fun in that?"
+      puts 'The PurpleToken high score API is provided for free by the kind person at Zimnox (https://www.zimnox.com/). ' \
+           "Please don't abuse this kindness."
 
       fetch_scores # initial fetch
     end
@@ -78,20 +73,11 @@ module HighScore
 
     private
 
-    # Build a signed request for the v3 API
-    # endpoint: 'get', 'submit', or 'delete'
-    # params: hash of query parameters (without gamekey, which is added automatically)
     def build_signed_request(endpoint, params = {})
-      # Build the params string
       params_string = params.map { |k, v| "#{k}=#{v}" }.join('&')
-
-      # Encode to Base64 (URL-safe, no padding)
       payload = Base64.urlsafe_encode64(params_string)
-
-      # Create signature: SHA256(payload + secret)
       signature = SHA256.hexdigest(payload + @secret)
 
-      # Build the final URL
       "#{BASE_URI}#{endpoint}?payload=#{payload}&sig=#{signature}"
     end
   end
