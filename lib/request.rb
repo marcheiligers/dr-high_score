@@ -24,9 +24,9 @@ class Request
   end
 
   def check_request
-    return unless complete?
+    return unless @response.complete?
 
-    if success_code?
+    if @response.success_code?
       @state = :success
       @callback.call(@response)
     else
@@ -38,23 +38,36 @@ class Request
 
   def send_request
     @state = :busy
-    @response = $gtk.http_get @url
+    @response = Response.new(@url)
   end
 
   def done?
     @state == :success || @retries > MAX_RETRIES
   end
 
-  def complete?
-    @response && @response[:complete]
-  end
+  class Response
+    def initialize(url)
+      @response = $gtk.http_get(url)
+    end
 
-  def success?
-    complete? && success_code?
-  end
+    def complete?
+      @response[:complete]
+    end
 
-  def success_code?
-    code = @response[:http_response_code]
-    code >= 200 && code < 300
+    def success?
+      complete? && success_code?
+    end
+
+    def code
+      @response[:http_response_code]
+    end
+
+    def success_code?
+      code >= 200 && code < 300
+    end
+
+    def body
+      @response[:response_data]
+    end
   end
 end

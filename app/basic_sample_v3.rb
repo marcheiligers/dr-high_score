@@ -1,25 +1,3 @@
-# dr-high_score
-
-A library for saving and retrieving high scores for DragonRuby.
-
-## Usage
-
-In order to use this library, you will need to sign up for an account at [Purple Token](https://purpletoken.com/), create a Game in the UI, and then create an API key.
-
-If you are using `PurpleToken` (the V2 API version), ensure that you enable the "Legacy" mode (checkbox) once the key has been created. It is however recommended to use `PurpleTokenV3`, which provides better obfuscation of the requests to the API making it more difficult for abusers to submit fake scores. In this case, you will also need to set a "Secret Pass Phrase" on [your profile page](https://purpletoken.com/profile.php).
-
-Grab the latest single file release `high_score.rb` from the [Releases](https://github.com/marcheiligers/dr-high_score/releases) page and save it in your DragonRuby game folder (I'm assuming in a `lib` directory in the sample below).
-
-Finally, you'll have to "encrypt" your API key (and secret). You can use the game console:
-
-```
-$gtk.ffi_misc.setclipboard(HighScore::BadCrypto.encrypt('YOUR_KEY_HERE'))
-```
-
-Or you can use the [sample app on Itch](https://fascinationworks.itch.io/dr-high-score?secret=h9NIxJGh6Isp10sy4s75xCAM).
-
-
-```ruby
 require 'lib/high_score.rb'
 
 PURPLE_TOKEN_KEY = 'enpmlnnlpl$snkplpcnadohpdt?dnnht!scdt!k!'
@@ -28,7 +6,7 @@ PURPLE_TOKEN_SECRET = 'RopUH1PPpz[}]#9s+N#'
 def tick(args)
   # Create a Purple Token instance
   #   Note that the token and secret are "encrypted". Really any player of your game can easily discover
-  #   these in the DragonRuby console, or in memory. With v3 the requests are cryptogrraphically signed
+  #   this key in the DragonRuby console, or in memory. With v3 the requests are cryptogrraphically signed
   #   so your keys aren't just showing up in the browser console for web builds anymore, but this is still
   #   just obfuscation. The "encryption" just ensures that your key and secret aren't in plain text in your repo.
   #
@@ -83,12 +61,3 @@ def tick(args)
     }
   end
 end
-```
-
-## Thanks
-
-* [Zimnox](https://zimnox.com/) (@phaelax on Discord) for providing [Purple Token](https://purpletoken.com/), and working with me to figure out the various CORS incantations to make it work with DragonRuby web builds
-* @virtualnomad on Discord for pointing me at Purple Token in the first place and connecting me with @phaelax
-* @leviongit (@leviondiscord on Discord) for [dragonjson](https://github.com/leviongit/dragonjson) used in the samples
-* @KonnorRogers for the [gist](https://gist.github.com/KonnorRogers/9ca86e4d055d81ee702fb79ceda5df20) to make links work in Safari again
-* @Xed on Discord for trying things and making me realize I need to add the notes about the "Legacy" keys to this file

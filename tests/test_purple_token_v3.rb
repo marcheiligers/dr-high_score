@@ -1,47 +1,47 @@
 # Mock PurpleTokenV3 to access private methods for testing
 class TestPurpleTokenV3 < HighScore::PurpleTokenV3
-  def test_build_signed_request(endpoint, params)
-    build_signed_request(endpoint, params)
+  def signed_request(endpoint, params)
+    build_url(endpoint, params)
+  end
+end
+
+# Override so the tests don't send requests to PurpleToken
+class Request
+  class Response
+    def initialize(url)
+      @url = url
+    end
   end
 end
 
 def test_purpletoken_v3_signed_request_format(_args, assert)
-  # Test that signed requests have the correct format
-  key = "test_key"
-  secret = "test_secret"
+  key = 'test_key'
+  secret = 'test_secret'
 
   instance = TestPurpleTokenV3.new(key, secret)
-  url = instance.test_build_signed_request('get', gamekey: 'test_key', format: 'json')
+  url = instance.signed_request(:get)
 
-  # URL should start with the base URI
-  assert.equal! url.start_with?("https://purpletoken.com/update/v3/get?"), true
-
-  # URL should contain payload parameter
-  assert.equal! url.include?("payload="), true
-
-  # URL should contain sig parameter
-  assert.equal! url.include?("&sig="), true
+  assert.true! url.start_with?('https://purpletoken.com/update/v3/get?')
+  assert.true! url.include?('payload=')
+  assert.true! url.include?('sig=')
 end
 
 def test_purpletoken_v3_payload_encoding(_args, assert)
-  # Test that the payload is correctly Base64 encoded
   key = "test_key"
   secret = "test_secret"
 
   instance = TestPurpleTokenV3.new(key, secret)
-  url = instance.test_build_signed_request('get', gamekey: 'test_key', format: 'json')
+  url = instance.signed_request(:get)
 
-  # Extract payload from URL (without using Regexp)
-  params = url.split('?')[1]
+  _, params = url.split('?')
   payload_param = params.split('&').find { |p| p.start_with?('payload=') }
-  payload = payload_param.split('=', 2)[1]
+  _, payload = payload_param.split('=')
 
-  assert.equal! payload.nil?, false
+  assert.false! payload.nil?
 
-  # Decode the payload and verify it contains the params
   decoded = HighScore::Base64.decode(payload)
-  assert.equal! decoded.include?("gamekey=test_key"), true
-  assert.equal! decoded.include?("format=json"), true
+  assert.true! decoded.include?('gamekey=test_key')
+  assert.true! decoded.include?('format=json')
 end
 
 def test_purpletoken_v3_signature_generation(_args, assert)
@@ -50,7 +50,7 @@ def test_purpletoken_v3_signature_generation(_args, assert)
   secret = "test_secret"
 
   instance = TestPurpleTokenV3.new(key, secret)
-  url = instance.test_build_signed_request('get', gamekey: 'test_key', format: 'json')
+  url = instance.signed_request('get', gamekey: 'test_key', format: 'json')
 
   # Extract payload and signature from URL (without using Regexp)
   params = url.split('?')[1]
@@ -87,7 +87,7 @@ def test_purpletoken_v3_api_example(_args, assert)
   encrypted_secret = HighScore::BadCrypto.encrypt(plain_secret)
 
   instance = TestPurpleTokenV3.new(key, encrypted_secret)
-  url = instance.test_build_signed_request('get',
+  url = instance.signed_request('get',
                                             gamkey: 'c5f4a0474223a4cc0c93d68a7c80cc541d05b90c',
                                             format: 'json',
                                             array: 'yes',
@@ -123,9 +123,9 @@ def test_purpletoken_v3_endpoints(_args, assert)
 
   instance = TestPurpleTokenV3.new(key, secret)
 
-  url_get = instance.test_build_signed_request('get', gamekey: 'test_key')
-  url_submit = instance.test_build_signed_request('submit', gamekey: 'test_key', player: 'test', score: 100)
-  url_delete = instance.test_build_signed_request('delete', gamekey: 'test_key', score_id: 123)
+  url_get = instance.signed_request('get', gamekey: 'test_key')
+  url_submit = instance.signed_request('submit', gamekey: 'test_key', player: 'test', score: 100)
+  url_delete = instance.signed_request('delete', gamekey: 'test_key', score_id: 123)
 
   assert.equal! url_get.include?("/v3/get?"), true
   assert.equal! url_submit.include?("/v3/submit?"), true
@@ -138,7 +138,7 @@ def test_purpletoken_v3_signature_hex_length(_args, assert)
   secret = "test_secret"
 
   instance = TestPurpleTokenV3.new(key, secret)
-  url = instance.test_build_signed_request('get', gamekey: 'test_key')
+  url = instance.signed_request('get', gamekey: 'test_key')
 
   # Extract signature (without using Regexp)
   params = url.split('?')[1]

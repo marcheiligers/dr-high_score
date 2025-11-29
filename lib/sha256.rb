@@ -3,7 +3,7 @@
 #   - https://github.com/ruby/rubygems/pull/4989/files
 #   - https://github.com/kaloos/sha256/blob/master/lib/TBAddress.rb
 #   - https://github.com/eliblurr/sha256-algorithm
-# working copy with notes:
+# messy working copy with annotations:
 #   https://gist.github.com/marcheiligers/3868b8fe862ce6a166a9cb67d7b429fb
 
 module SHA256
