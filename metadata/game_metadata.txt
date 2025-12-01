@@ -3,7 +3,7 @@ devid=fascinationworks
 devtitle=Fascination Works
 gameid=dr-high-score
 gametitle=DragonRuby High Score
-version=0.0.2
+version=0.1.0
 icon=metadata/icon.png
 
 # === Flags available at all licensing tiers ===
