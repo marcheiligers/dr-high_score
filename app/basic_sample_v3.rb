@@ -1,7 +1,7 @@
 require 'lib/high_score.rb'
 
 PURPLE_TOKEN_KEY = 'enpmlnnlpl$snkplpcnadohpdt?dnnht!scdt!k!'
-PURPLE_TOKEN_SECRET = 'RopUH1PPpz[}]#9s+N#'
+PURPLE_TOKEN_SECRET = 'TopUH1PPpz[}{#9s+N#'
 
 def tick(args)
   # Create a Purple Token instance
@@ -29,7 +29,7 @@ def tick(args)
   #   This automatically updates the local cache of scores so the score is immediately
   #   visible in the high scores table. If the call is successful, it will attempt to initiate
   #   a `#fetch_scores` immediately afterwards to get the latest scores (see above).
-  args.state.purple_token.save_score('Marc', 1) if args.tick_count == 0
+  args.state.purple_token.save_score('Marc', 2) if args.tick_count == 0
 
   # Tick
   #   The API calls happen asynchronously, and so the Purple Token instance need to be given

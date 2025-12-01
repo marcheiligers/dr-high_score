@@ -6,7 +6,7 @@ require_relative 'link.rb'
 require_relative 'scroller.rb'
 
 PURPLE_TOKEN_KEY = 'enpmlnnlpl$snkplpcnadohpdt?dnnht!scdt!k!'
-PURPLE_TOKEN_SECRET = 'RopUH1PPpz[}]#9s+N#'
+PURPLE_TOKEN_SECRET = 'TopUH1PPpz[}{#9s+N#'
 
 def init(args)
   Input.replace_console!

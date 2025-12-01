@@ -23,13 +23,14 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-# Removed docstrings to reduce bloat for web builds
+# Removed docstrings to reduce bloat for web builds, and added `extend self`
 
 module Base64
   # The version of this module.
   VERSION = "0.3.0"
 
-  module_function
+  # module_function
+  extend self
 
   def encode64(bin)
     [bin].pack("m")

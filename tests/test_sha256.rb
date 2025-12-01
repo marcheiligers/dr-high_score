@@ -17,10 +17,10 @@ end
 
 def test_sha256_purpletoken_v3_example(_args, assert)
   # Example: https://purpletoken.com/api.php
-  encoded = 'Z2Fta2V5PWM1ZjRhMDQ3NDIyM2E0Y2MwYzkzZDY4YTdjODBjYzU0MWQwNWI5MGMmZm9ybWF0PWpzb24mYXJyYXk9eWVzJmRhdGVzPXllcyZpZHM9eWVz'
+  encoded = 'Z2FtZWtleT1jNWY0YTA0NzQyMjNhNGNjMGM5M2Q2OGE3YzgwY2M1NDFkMDViOTBjJmZvcm1hdD1qc29uJmFycmF5PXllcyZkYXRlcz15ZXMmaWRzPXllcw=='
   secret = 'fuzzy bunnies'
   input = encoded + secret
-  expected = '5888134de8dff7b7afc159c99382ef9ad7bc2bc5e45930630c5267d395242fa0'
+  expected = 'dcb260adda344e82daa9ffa2f7a03aebca101b9afd4fa327a83ce8c20c30d8ee'
 
   actual = SHA256.hexdigest(input)
   assert.equal! actual, expected

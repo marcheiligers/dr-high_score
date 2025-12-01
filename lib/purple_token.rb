@@ -113,13 +113,18 @@ module HighScore
     end
   end
 
+  # See https://purpletoken.com/api.php
   class PurpleTokenV3 < PurpleTokenBase
-    include Base64
-
     BASE_URI = 'https://purpletoken.com/update/v3/'.freeze
     ENDPOINTS = {
-      get: { path: 'get', params: { format: 'json' } },
+      get: { path: 'get', params: { format: 'json' } }, # , limit: 20 } },
       submit: { path: 'submit', params: {} }
+    }.freeze
+    ERROR_CODES = {
+      -1 => 'Unknown error',
+      3 => 'Invalid gamekey',
+      5 => 'Missing required field',
+      7 => 'Signature did not much up with payload'
     }.freeze
 
     def initialize(key, secret, scores = [])
@@ -134,8 +139,10 @@ module HighScore
   private
 
     def build_url(endpoint, **params)
-      params_string = params.merge(gamekey: @key).map { |k, v| "#{k}=#{v}" }.join('&')
-      payload = urlsafe_encode64(params_string)
+      ep = ENDPOINTS[endpoint]
+      params_string = { gamekey: @key }.merge(ep.params).merge(params).map { |k, v| "#{k}=#{v}" }.join('&')
+      puts "params_string: #{params_string}"
+      payload = Base64.urlsafe_encode64(params_string)
       signature = SHA256.hexdigest(payload + @secret)
 
       "#{BASE_URI}#{endpoint}?payload=#{payload}&sig=#{signature}"
@@ -143,6 +150,7 @@ module HighScore
 
     def invalid_response(response)
       puts "Invalid response from PurpleToken: #{response.body}"
+      puts response.inspect
       puts 'Check that your gamekey and secret are correct, and encrypted with BadCrypto.'
     end
   end
