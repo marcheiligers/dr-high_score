@@ -1,15 +1,3 @@
-rm -rf ../build
-mkdir -p ../build
-
-cp -R app ../build
-cp -R lib ../build
-cp -R metadata ../build
-
-cp ../.dragonruby/stubs/html5/dragonruby-html5-loader.js dragonruby-html5-loader.js
-cat safari_links.js >> ../.dragonruby/stubs/html5/dragonruby-html5-loader.js
-
+rm game_state*.txt
 cd ..
-./dragonruby-publish build || true
-
-cd -
-cp dragonruby-html5-loader.js ../.dragonruby/stubs/html5/dragonruby-html5-loader.js
+./dragonruby-publish dr-high_score

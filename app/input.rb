@@ -1,11 +1,12 @@
-# dr-input v0.0.21
+# dr-input v0.1.1
 # MIT Licensed
 # Copyright (c) 2024 Marc Heiligers
 # See https://github.com/marcheiligers/dr-input
 
+module Input; DEVELOPMENT = false; VERSION = 'v0.1.1'; end
+
 # Initially based loosely on code from Zif (https://github.com/danhealy/dragonruby-zif)
 
-$clipboard = ''
 
 # TODO: Drag selected text
 # TODO: Render Squiggly lines
@@ -96,6 +97,8 @@ module Input
       @alt = (special_keys & ALT_KEYS).any?
       @shift = @shift_lock || (special_keys & SHIFT_KEYS).any?
       @ctrl = (special_keys & CTRL_KEYS).any?
+
+      @text_keys = $args.inputs.text
     end
   end
 end
@@ -436,7 +439,6 @@ module Input
 
             # break up long words
             w = @font_style.string_width(word.rstrip)
-            # TODO: make this a binary search
             while w > width
               r = word.length - 1
               l = 0
@@ -595,7 +597,7 @@ module Input
 
       @max_length = params[:max_length] || false
 
-      @selection_start = params[:selection_start] || params.fetch(:value, '').length
+      @selection_start = params[:selection_start] || params[:value].to_s.length
       @selection_end = params[:selection_end] || @selection_start
 
       @selection_color = parse_color(params, :selection, dr: 102, dg: 178, db: 255, da: 128)
@@ -615,8 +617,6 @@ module Input
       # Render target for text scrolling
       @path = "__input_#{@@id += 1}"
 
-      @scroll_x = 0
-      @scroll_y = 0
       @content_w = @w
       @content_h = @h
 
@@ -629,7 +629,7 @@ module Input
       @focussed = params[:focussed] || params[:focused] || false
       @will_focus = false # Get the focus at the end of the tick
 
-      @on_clicked = params[:on_clicked] || NOOP
+      @on_click = params[:on_click] || params[:on_clicked] || NOOP
       # @on_handled_key = params[:on_handled_key] || NOOP
       @on_unhandled_key = params[:on_unhandled_key] || NOOP
 
@@ -663,15 +663,16 @@ module Input
                 @cursor_dir = 1
                 0
               elsif @cursor_ticks < CURSOR_FULL_TICKS
-                $args.easing.ease(0, @cursor_ticks, CURSOR_FLASH_TICKS, :quad) * 255
+                Easing.smooth_start(start_at: 0, tick_count: @cursor_ticks, end_at: CURSOR_FLASH_TICKS, power: 2) * 255
               else
                 255
               end
+
       rt.primitives << {
         x: (@cursor_x - 1).greater(0) - @scroll_x,
-        y: @cursor_y - @padding - @scroll_y,
+        y: @cursor_y - @scroll_y,
         w: @cursor_width,
-        h: @font_height + @padding * 2
+        h: @font_height
       }.solid!(**@cursor_color, a: alpha)
     end
 
@@ -703,10 +704,11 @@ module Input
     end
 
     def value=(text)
-      text = text[0, @max_length] if @max_length
-      @value.replace(text)
-      @selection_start = @selection_start.lesser(text.length)
-      @selection_end = @selection_end.lesser(text.length)
+      val = text.to_s
+      val = val[0, @max_length] if @max_length
+      @value.replace(val)
+      @selection_start = @selection_start.lesser(val.length)
+      @selection_end = @selection_end.lesser(val.length)
     end
 
     def size_enum
@@ -728,21 +730,21 @@ module Input
     def insert(str)
       @selection_end, @selection_start = @selection_start, @selection_end if @selection_start > @selection_end
       insert_at(str, @selection_start, @selection_end)
-
-      @selection_start += str.length
-      @selection_end = @selection_start
     end
     alias replace insert
 
     def insert_at(str, start_at, end_at = start_at)
       end_at, start_at = start_at, end_at if start_at > end_at
       if @max_length && @value.length - (end_at - start_at) + str.length > @max_length
-        str = str[0, @max_length - @value.length + (end_at - start_at) - str.length]
+        str = str[0, @max_length - @value.length + (end_at - start_at)]
         return if str.nil? # too long
       end
 
       @value.insert(start_at, end_at, str)
       @value_changed = true
+
+      @selection_start += str.length
+      @selection_end = @selection_start
     end
     alias replace_at insert_at
 
@@ -915,7 +917,7 @@ module Input
     end
 
     def delete_back
-      @selection_start -= 1 if @selection_start == @selection_end
+      @selection_start -= 1 if @selection_start == @selection_end && @selection_start > 0
       insert('')
     end
 
@@ -943,9 +945,73 @@ module Input
 end
 
 module Input
+  # This works by:
+  #   1. Overriding the `GTK::Runtime#tick_core method` (example found in lowrez.rb)
+  #   2. It fetches 'https://github.com/marcheiligers/dr-input/releases/latest' which will redirect to the latest release.
+  #      DRGKT follows redirects, so we get the HTML from the final destination.
+  #   3. That HTML contains OpenGraph tags including:
+  #        `<meta property="og:url" content="/marcheiligers/dr-input/releases/tag/v0.0.25" />`
+  #      which contains the latest version number.
+  #   4. That then allows us to fetch that version from the releases using $gtk.download_stb_rb_raw
+  #   5. Finally it aliases the original `tick_core` method back, and cleans up the methods and instance variables created.
+  # State is maintained through the existence of method aliases and instance variables, which are removed on completion.
+  # Error handling ensures everything is cleaned up if there is a failure.
+
+  def self.download_update!
+    return puts 'Already busy updating' if GTK::Runtime.instance_variable_defined?(:@__input_file_path)
+
+    GTK::Runtime.alias_method(:__input_orig_tick_core, :tick_core)
+    GTK::Runtime.instance_variable_set(:@__input_file_path, Input::DEVELOPMENT ? 'input.rb' : 'file.rb')
+
+    GTK::Runtime.define_method(:tick_core) do
+      __input_orig_tick_core
+
+      if !instance_variable_defined?(:@__input_version_response)
+        @__input_version_response = $gtk.http_get 'https://github.com/marcheiligers/dr-input/releases/latest'
+      elsif @__input_version_response[:complete] && !instance_variable_defined?(:@__input_download_response)
+        raise "Received status code #{@__input_version_response[:http_response_code]}" unless @__input_version_response[:http_response_code] == 200
+
+        data = @__input_version_response[:response_data]
+        search = '<meta property="og:url" content="/marcheiligers/dr-input/releases/tag/v'
+        start_char = data.index(search) + search.length
+        end_char = data.index('"', start_char)
+        @__input_version = data.slice(start_char...end_char)
+        puts "Found version #{@__input_version}."
+        raise "Remote version is the same as local #{@__input_version}" if @__input_version == Input::VERSION
+
+        url = "https://github.com/marcheiligers/dr-input/releases/download/v#{@__input_version}/input.rb"
+        @__input_download_response = $gtk.http_get url
+      elsif instance_variable_defined?(:@__input_download_response) && @__input_download_response[:complete]
+        raise "Received status code #{@__input_download_response[:http_response_code]}" unless @__input_download_response[:http_response_code] == 200
+
+        path = self.class.instance_variable_get(:@__input_file_path)
+        data = @__input_download_response[:response_data]
+        $gtk.write_file path, data
+
+        puts "Updated to version #{@__input_version} at #{path}"
+        __input_cleanup_update
+      end
+    rescue StandardError => e
+      puts "Failed to download update: #{e.message}"
+      __input_cleanup_update
+    end
+
+    GTK::Runtime.define_method(:__input_cleanup_update) do
+      self.class.alias_method :tick_core, :__input_orig_tick_core
+      self.class.remove_method :__input_orig_tick_core
+      self.class.remove_method :__input_cleanup_update
+      remove_instance_variable :@__input_version_response if instance_variable_defined? :@__input_version_response
+      remove_instance_variable :@__input_version if instance_variable_defined? :@__input_version
+      remove_instance_variable :@__input_download_response if instance_variable_defined? :@__input_download_response
+      self.class.remove_instance_variable :@__input_file_path if self.class.instance_variable_defined? :@__input_file_path
+    end
+  end
+end
+
+module Input
   class Text < Base
     def initialize(**params)
-      @value = TextValue.new(params[:value] || '')
+      @value = TextValue.new(params[:value].to_s)
       super
     end
 
@@ -973,8 +1039,6 @@ module Input
     end
 
     def handle_keyboard
-      text_keys = $args.inputs.text
-
       if @meta || @ctrl
         # TODO: undo/redo
         if @down_keys.include?(:a)
@@ -1001,7 +1065,7 @@ module Input
         else
           @on_unhandled_key.call(@down_keys.first, self)
         end
-      elsif text_keys.empty?
+      elsif @text_keys.empty?
         if @down_keys.include?(:delete)
           delete_forward unless @readonly
         elsif @down_keys.include?(:backspace)
@@ -1032,7 +1096,7 @@ module Input
           @on_unhandled_key.call(@down_keys.first, self)
         end
       else
-        insert(text_keys.join('')) unless @readonly
+        insert(@text_keys.join('')) unless @readonly
         @ensure_cursor_visible = true
       end
     end
@@ -1054,7 +1118,7 @@ module Input
         @selection_end = index
         @mouse_down = false if mouse.up
       else
-        @on_clicked.call(mouse, self)
+        @on_click.call(mouse, self)
         return unless @focussed || @will_focus
 
         @mouse_down = true
@@ -1113,13 +1177,13 @@ module Input
 
       if @value.empty?
         @cursor_x = 0
-        @cursor_y = 0
+        @cursor_y = @padding
         @scroll_x = 0
         rt.primitives << @font_style.label(x: 0, y: @padding, text: @prompt, **@prompt_color)
       else
         # CURSOR AND SCROLL LOCATION
         @cursor_x = @font_style.string_width(@value[0, @selection_end].to_s)
-        @cursor_y = 0
+        @cursor_y = @padding
 
         if @content_w < @w
           @scroll_x = 0
@@ -1143,7 +1207,7 @@ module Input
             right = (@font_style.string_width(@value[0, @selection_start].to_s) - @scroll_x).cap_min_max(0, @w)
           end
 
-          rt.primitives << { x: left, y: @padding, w: right - left, h: @font_height + @padding * 2 }.solid!(sc)
+          rt.primitives << { x: left, y: 0, w: right - left, h: @font_height + @padding * 2 }.solid!(sc)
         end
 
         # TEXT
@@ -1160,7 +1224,7 @@ end
 module Input
   class Multiline < Base
     def initialize(**params)
-      value = params[:value] || ''
+      value = params[:value].to_s
 
       super
 
@@ -1224,7 +1288,6 @@ module Input
     end
 
     def handle_keyboard
-      text_keys = $args.inputs.text
       # On a Mac:
       # Home is Cmd + ↑ / Fn + ←
       # End is Cmd + ↓ / Fn + →
@@ -1262,7 +1325,7 @@ module Input
         else
           @on_unhandled_key.call(@down_keys.first, self)
         end
-      elsif text_keys.empty?
+      elsif @text_keys.empty?
         if @down_keys.include?(:delete)
           delete_forward unless @readonly
           @ensure_cursor_visible = true
@@ -1323,7 +1386,7 @@ module Input
           @on_unhandled_key.call(@down_keys.first, self)
         end
       else
-        insert(text_keys.join('')) unless @readonly
+        insert(@text_keys.join('')) unless @readonly
         @ensure_cursor_visible = true
       end
     end
@@ -1462,7 +1525,7 @@ module Input
         @selection_end = index
         @mouse_down = false if mouse.up
       else # clicking
-        @on_clicked.call(mouse, self)
+        @on_click.call(mouse, self)
         return unless (@focussed || @will_focus) && mouse.button_left
 
         if @shift
@@ -1517,10 +1580,10 @@ module Input
         @cursor_x = 0
         @scroll_x = 0
         if @fill_from_bottom
-          @cursor_y = 0
+          @cursor_y = -@padding
           rt.primitives << @font_style.label(x: 0, y: 0, text: @prompt, **@prompt_color)
         else
-          @cursor_y = @h - @font_height
+          @cursor_y = @h - @font_height - @padding
           rt.primitives << @font_style.label(x: 0, y: @h - @font_height, text: @prompt, **@prompt_color)
         end
       else
@@ -1533,7 +1596,7 @@ module Input
           @cursor_index = 0
         end
 
-        @cursor_y = @scroll_h - (@cursor_line.number + 1) * @font_height
+        @cursor_y = @scroll_h - (@cursor_line.number + 1) * @font_height - @padding
         @cursor_y += @fill_from_bottom ? @content_h : @h - @content_h if @content_h < @h
         if @scroll_h <= @h # total height is less than height of the control
           @scroll_y = @fill_from_bottom ? @scroll_h : 0

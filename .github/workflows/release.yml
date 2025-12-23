@@ -23,18 +23,12 @@ jobs:
           echo "# Copyright (c) 2025 Marc Heiligers" >> high_score.rb
           echo "# See https://github.com/marcheiligers/dr-high_score" >> high_score.rb
           echo "" >> high_score.rb
-          # echo "---- File header complete ----"
-          # cat high_score.rb
           grep -v require_relative lib/high_score.rb >> high_score.rb || true
-          # echo "---- Main file complete ----"
-          # cat high_score.rb
           for file in ${files}
           do
             cat "lib/${file}" >> high_score.rb
             echo "" >> high_score.rb
           done
-          # echo "---- Requires complete ----"
-          # cat high_score.rb
         shell: bash
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -48,22 +42,12 @@ jobs:
           } >> "$GITHUB_OUTPUT"
         id: changelog
       - name: Create release
-        uses: actions/create-release@v1
-        id: create_release
+        uses: softprops/action-gh-release@v2
         with:
           draft: false
           prerelease: false
-          release_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
           tag_name: ${{ steps.version.outputs.version }}
           body: ${{ steps.changelog.outputs.changelog }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload release
-        uses: actions/upload-release-asset@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: high_score.rb
-          asset_name: high_score.rb
-          asset_content_type: text/ruby
+          files: high_score.rb
+          token: ${{ secrets.GITHUB_TOKEN }}
