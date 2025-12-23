@@ -1,4 +1,4 @@
-# v0.1.0 - [UNRELEASED]
+# v0.1.0 - 22 December 2025
 
 * Add SHA256 DragonRuby (mRuby) implementation, see [the messy annotated version of the SHA256 code here](https://gist.github.com/marcheiligers/3868b8fe862ce6a166a9cb67d7b429fb)
 * Add Base64 [cribbed from CRuby](https://github.com/ruby/base64/blob/master/lib/base64.rb)

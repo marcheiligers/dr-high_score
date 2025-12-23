@@ -92,3 +92,5 @@ end
 * @leviongit (@leviondiscord on Discord) for [dragonjson](https://github.com/leviongit/dragonjson) used in the samples
 * @KonnorRogers for the [gist](https://gist.github.com/KonnorRogers/9ca86e4d055d81ee702fb79ceda5df20) to make links work in Safari again
 * @Xed on Discord for trying things and making me realize I need to add the notes about the "Legacy" keys to this file
+* Matz for the [CRuby Base64](https://github.com/ruby/base64/blob/master/lib/base64.rb) implementation I cribbed
+* Various authors for their articles on, and code implementing, SHA2. [See here](https://gist.github.com/marcheiligers/3868b8fe862ce6a166a9cb67d7b429fb)
